@@ -12,18 +12,31 @@ st.set_page_config(
 )
 
 # Function to load and prepare data
-# @st.cache_data is used to cache the data, so it only loads once
 @st.cache_data
 def load_data():
     # Load the cleaned data file named 'sales_data.csv'
     try:
-        # Note: We are using 'sales_data.csv' as the standard file name
-        # The file was cleaned earlier (e.g., column names standardized and percentages converted to decimals)
         df = pd.read_csv('sales_data.csv')
     except FileNotFoundError:
         st.error("Error: 'sales_data.csv' not found. Please ensure the data file is committed to your GitHub repository.")
-        return pd.DataFrame() # Return empty DataFrame on error
+        return pd.DataFrame()
 
+    # --- CRITICAL DATA CLEANING FIX ---
+    # The KeyError occurs because column names have spaces, but the code uses underscores.
+    df = df.rename(columns={
+        'Emp Code': 'Emp_Code',
+        'Sales Executive': 'Sales_Executive',
+        'Total Sales': 'Total_Sales',
+        'Target Hit %': 'Target_Hit_Pct',
+        'Away From Target %': 'Away_From_Target_Pct'
+    })
+
+    # Convert percentage columns (like '67.80%') from strings to floats (0.678)
+    for col in ['Target_Hit_Pct', 'Away_From_Target_Pct']:
+        if col in df.columns and df[col].dtype == 'object':
+            # Remove the '%' sign and divide by 100 to get the decimal representation
+            df[col] = df[col].str.replace('%', '').astype(float) / 100
+    
     return df
 
 # Load the data
@@ -72,6 +85,7 @@ st.markdown("---")
 # --- ROW 1: Key Performance Indicators (KPIs) ---
 col1, col2, col3, col4 = st.columns(4)
 
+# These column accesses now work because the names were corrected in load_data()
 total_sales = df_filtered['Total_Sales'].sum()
 avg_target_hit = df_filtered['Target_Hit_Pct'].mean() * 100
 total_salesmen = df_filtered['Emp_Code'].nunique()
@@ -152,7 +166,7 @@ if not df_support.empty:
     st.dataframe(
         df_support[['Sales_Executive', 'Region', 'Total_Sales', 'Target', 'Target_Hit_Pct', 'Away_From_Target_Pct']]
         .style.format({
-            # FIX: Changed '₹' to '$' to resolve the 'sprintf' deployment error.
+            # Uses '$' to avoid the Streamlit 'sprintf' error
             'Total_Sales': "${:,.0f}",  
             'Target': "${:,.0f}",
             'Target_Hit_Pct': "{:.1%}",
