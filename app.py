@@ -12,20 +12,24 @@ st.set_page_config(
 )
 
 # Function to load and prepare data
+# @st.cache_data is used to cache the data, so it only loads once
 @st.cache_data
 def load_data():
-    # Load the cleaned data file
+    # Load the cleaned data file named 'sales_data.csv'
     try:
-        # The column names were standardized to match the code below
+        # Note: We are using 'sales_data.csv' as the standard file name
+        # The file was cleaned earlier (e.g., column names standardized and percentages converted to decimals)
         df = pd.read_csv('sales_data.csv')
     except FileNotFoundError:
-        st.error("Error: 'sales_data.csv' not found. Please ensure the data file is in the same directory.")
+        st.error("Error: 'sales_data.csv' not found. Please ensure the data file is committed to your GitHub repository.")
         return pd.DataFrame() # Return empty DataFrame on error
 
     return df
 
+# Load the data
 df = load_data()
 
+# Stop the app if data failed to load
 if df.empty:
     st.stop()
 
@@ -34,11 +38,11 @@ if df.empty:
 st.sidebar.title("🧭 Dashboard Controls")
 
 # 1. State/Region Multi-Select Filter
-all_states = ['All States'] + sorted(df['Region'].unique().tolist())
+all_states = ['All Regions'] + sorted(df['Region'].unique().tolist())
 selected_states = st.sidebar.multiselect(
     "Filter by State/Region:",
     options=all_states,
-    default=['All States']
+    default=['All Regions']
 )
 
 # 2. Performance Threshold Slider (for conditional formatting in table)
@@ -54,7 +58,7 @@ target_threshold = st.sidebar.slider(
 # --- Data Filtering Logic ---
 
 # Apply State/Region filter
-if 'All States' not in selected_states:
+if 'All Regions' not in selected_states:
     df_filtered = df[df['Region'].isin(selected_states)]
 else:
     df_filtered = df.copy()
@@ -62,7 +66,7 @@ else:
 # --- Main Dashboard Layout ---
 
 st.title("📊 Sales Performance Dashboard - Abhay Singh Rawat")
-st.markdown("An interactive view of salesman and state-level performance.")
+st.markdown("An interactive view of salesman and regional performance.")
 st.markdown("---")
 
 # --- ROW 1: Key Performance Indicators (KPIs) ---
@@ -116,7 +120,7 @@ with chart_col1:
 
 # Chart 2: State-level Target Achievement (Bar Chart by Region)
 with chart_col2:
-    st.subheader("State-Level Target Hit %")
+    st.subheader("Regional Target Hit %")
 
     # Aggregate by Region
     region_agg = df_filtered.groupby('Region').agg(
@@ -148,8 +152,9 @@ if not df_support.empty:
     st.dataframe(
         df_support[['Sales_Executive', 'Region', 'Total_Sales', 'Target', 'Target_Hit_Pct', 'Away_From_Target_Pct']]
         .style.format({
-            'Total_Sales': "₹{:,.0f}",  # Assuming currency is Rupee (₹) based on context, adjust if needed
-            'Target': "₹{:,.0f}",
+            # FIX: Changed '₹' to '$' to resolve the 'sprintf' deployment error.
+            'Total_Sales': "${:,.0f}",  
+            'Target': "${:,.0f}",
             'Target_Hit_Pct': "{:.1%}",
             'Away_From_Target_Pct': "{:.1%}"
         })
